@@ -3,31 +3,51 @@ var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
-var port = process.env.PORT || 3000;
 
-var router = express.Router();
+var port = process.env.PORT || 3000;
 
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
 });
 
+app.configure('development', function(){
+  app.use(express.errorHandler());
+});
+
 // Routing
-app.use(express.static(__dirname + '/public'));
+
+// app.use(function (req, res, next) {
+//   console.log('Time: %d', Date.now());
+//   app.use(express.static(__dirname + '/public'));
+//   next();
+// });
+
+app.all('/match/:match', function(req, res, next) {
+  console.log(req.params.match);
+
+  //   socket.emit('add user');
+
+  //   socket.join(match);
+
+  res.end( express.static(__dirname + '/public') );
+
+});
 
 // Chatroom
 
 // usernames which are currently connected to the chat
 var usernames = {};
-var matchnames = [];
+var matchnames = ['Lobby'];
 var numUsers = 0;
 
 io.on('connection', function (socket) {
   var addedUser = false;
 
   // when the client emits 'new message', this listens and executes
-  socket.on('new message', function (data) {
+  socket.on('new message', function (data, matchname) {
+
     // we tell the client to execute 'new message'
-    socket.broadcast.emit('new message', {
+    socket.broadcast.to(matchname).emit('new message', {
       username: socket.username,
       message: data
     });
@@ -82,24 +102,23 @@ io.on('connection', function (socket) {
 
     matchnames.push(matchname);
 
+
+
+    socket.join(matchname);
+
     socket.emit('log match', {
       matchname: matchname
-    });
-
-    socket.broadcast.emit('begin match', {
-      username: socket.username,
-      numUsers: numUsers,
-      matchname: matchname,
-      matchnames: matchnames
     });
   });
 
   // when the player join in a match
   socket.on('join match', function (username, matchname) {
 
-    //
+    console.log(matchnames);
 
-    socket.broadcast.emit('join match', {
+    socket.join(matchname);
+
+    socket.broadcast.to(matchname).emit('join match', {
       username: socket.username,
       numUsers: numUsers,
       matchname: matchname

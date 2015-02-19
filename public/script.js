@@ -71,10 +71,11 @@ $(function() {
         $messages[0].scrollTop = $messages[0].scrollHeight;
     }
 
-    function addMatchNames(matchnames) {
+    function addMatchNames(matches) {
 
-        for (mn in matchnames) {
-          addMessageElement($matchnames);
+        // imprime mal los matches
+        for (m in matches) {
+            $matchnames.prepend('<a href="#">' + matches[m] + '</a><br/>');
         }
     }
 
@@ -117,12 +118,13 @@ $(function() {
         // if there is a non-empty message and a socket connection
         if (message && connected) {
             $inputMessage.val('');
+
             addChatMessage({
                 username: username,
                 message: message
             });
             // tell server to execute 'new message' and send along one parameter
-            socket.emit('new message', message);
+            socket.emit('new message', message, matchname);
         }
     }
 
@@ -136,7 +138,9 @@ $(function() {
     function addChatMessage(data, options) {
         // Don't fade the message in if there is an 'X was typing'
         var $typingMessages = getTypingMessages(data);
+
         options = options || {};
+
         if ($typingMessages.length !== 0) {
             options.fade = false;
             $typingMessages.remove();
