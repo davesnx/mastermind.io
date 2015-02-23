@@ -10,7 +10,7 @@ $(function() {
     // Initialize varibles
     var $window = $(window);
     var $usernameInput = $('.usernameInput'); // Input for username
-    var $userMatchNameInput = $('.userMatchNameInput');
+    var $matchnameInput = $('.userMatchNameInput');
     var $messages = $('.messages'); // Messages area
     var $matchnames = $('.matchnames'); // Messages area
     var $inputMessage = $('.inputMessage'); // Input message input box
@@ -20,7 +20,6 @@ $(function() {
     var $matchDiv = $('.matchname');
     var $chatPage = $('.chat.page'); // The chatroom page
 
-    // Prompt for setting a username
     var username;
     var matchname;
     var connected = false;
@@ -71,12 +70,12 @@ $(function() {
         $messages[0].scrollTop = $messages[0].scrollHeight;
     }
 
+    // Añadiendo las salas creadas en una lista de links
     function addMatchNames(matches) {
 
-        // imprime mal los matches
-        for (m in matches) {
-            $matchnames.prepend('<a href="#">' + matches[m] + '</a><br/>');
-        }
+        $.each(matches.matchnames, function( i, value ) {
+            $matchnames.append('<li><a href="/' + value + '">' + value + '</a></li>');
+        });
     }
 
     // Sets the client's username
@@ -87,7 +86,7 @@ $(function() {
         if (username) {
             $loginPage.fadeOut();
             $loginPage.off('click');
-            $currentInput = $userMatchNameInput.focus();
+            $currentInput = $matchnameInput.focus();
 
             // Tell the server your username
             socket.emit('add user', username);
@@ -95,7 +94,7 @@ $(function() {
     }
 
     function setMatchName() {
-        matchname = cleanInput($userMatchNameInput.val().trim());
+        matchname = cleanInput($matchnameInput.val().trim());
 
         // If the matchname is valid
         if (matchname) {
@@ -106,7 +105,7 @@ $(function() {
             $currentInput = $inputMessage.focus();
 
             // Tell the server your username
-            socket.emit('begin match', username, matchname);
+            socket.emit('join match', username, matchname);
         }
     }
 
@@ -252,23 +251,23 @@ $(function() {
 
     // Keyboard events
 
-    $window.keydown(function(event) {
+    $usernameInput.keydown(function(event) {
+        console.log("lola");
+        if(event.which === 13) setUsername();
+    });
 
-        // Auto-focus the current input when a key is typed
-        if (!(event.ctrlKey || event.metaKey || event.altKey)) {
-            // $currentInput.focus();
+    $matchnameInput.keydown(function(event) {
+        if(event.which === 13) {
+            setMatchName();
+            window.history.pushState("", "mm.io/" + matchname, "/" + matchname);
         }
-        // When the client hits ENTER on their keyboard
-        if (event.which === 13) {
-            if (username && matchname) {
-                sendMessage();
-                socket.emit('stop typing');
-                typing = false;
-            } else if (!username) {
-                setUsername();
-            } else if (!matchname) {
-                setMatchName();
-            } else {}
+    });
+
+    $inputMessage.keydown(function(event) {
+        if(event.which === 13) {
+            sendMessage();
+            socket.emit('stop typing');
+            typing = false;
         }
     });
 
@@ -324,7 +323,7 @@ $(function() {
         log(data.matchname + ' started');
         addParticipantsMessage(data);
     });
-
+    
     // Whenever the server emits 'user left', log it in the chat body
     socket.on('user left', function(data) {
         log(data.username + ' left');

@@ -1,8 +1,8 @@
-// Setup basic express server
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
+var path = require('path');
 
 var port = process.env.PORT || 3000;
 
@@ -10,35 +10,28 @@ server.listen(port, function () {
   console.log('Server listening at port %d', port);
 });
 
-app.configure('development', function(){
+app.use(app.router);
+app.use(express.compress());
+app.use(express.static(path.join(__dirname, 'public')));
+// app.use("/styles",  express.static(__dirname + '/public/css'));
+// app.use("/scripts", express.static(__dirname + '/public/js'));
+
+if (app.get('env') == 'development') {
   app.use(express.errorHandler());
-});
-
-// Routing
-
-// app.use(function (req, res, next) {
-//   console.log('Time: %d', Date.now());
-//   app.use(express.static(__dirname + '/public'));
-//   next();
-// });
-
-app.all('/match/:match', function(req, res, next) {
-  console.log(req.params.match);
-
-  //   socket.emit('add user');
-
-  //   socket.join(match);
-
-  res.end( express.static(__dirname + '/public') );
-
-});
-
-// Chatroom
+  app.use(express.logger('dev'));
+}
 
 // usernames which are currently connected to the chat
 var usernames = {};
-var matchnames = ['Lobby'];
+
+// lista de todas las "salas" creadas
+var matchnames = [];
+
 var numUsers = 0;
+
+// var match = io.of('/match').on('connection', function (socket) {
+//   console.log(req.params.match);
+// });
 
 io.on('connection', function (socket) {
   var addedUser = false;
@@ -94,63 +87,47 @@ io.on('connection', function (socket) {
     });
   });
 
-  // when the player begin the match
-  socket.on('begin match', function (username, matchname) {
-
-    // crear nuevo codigo
-    // createNewCode();
+  // when the player join a match
+  socket.on('join match', function (username, matchname, hiddeuser) {
 
     matchnames.push(matchname);
-
-
-
     socket.join(matchname);
 
-    socket.emit('log match', {
-      matchname: matchname
-    });
-  });
-
-  // when the player join in a match
-  socket.on('join match', function (username, matchname) {
-
-    console.log(matchnames);
-
-    socket.join(matchname);
+    console.log("Username at join match: " + matchname + ", is: " + socket.username);
 
     socket.broadcast.to(matchname).emit('join match', {
       username: socket.username,
       numUsers: numUsers,
-      matchname: matchname
+      matchname: socket.rooms
     });
   });
 
   // when the player begin the match
-  socket.on('new throw', function (username, matchname) {
+  // socket.on('new throw', function (username, matchname) {
 
-    // comprobar codigo de acierto
-    checkCode();
+  //   // comprobar codigo de acierto
+  //   checkCode();
 
-    // añadiremos una tirada al usuario
-    addTrhowtoUsername(username);
+  //   // añadiremos una tirada al usuario
+  //   addTrhowtoUsername(username);
 
-    socket.broadcast.emit('new throw', {
-      username: socket.username,
-      numUsers: numUsers
-    });
-  });
+  //   socket.broadcast.emit('new throw', {
+  //     username: socket.username,
+  //     numUsers: numUsers
+  //   });
+  // });
 
-  // al acabar partida
-  socket.on('acabar partida', function (username, matchname) {
+  // // al acabar partida
+  // socket.on('acabar partida', function (username, matchname) {
 
-    // comprobar si es ganador o perdedor
-    checkWin();
+  //   // comprobar si es ganador o perdedor
+  //   checkWin();
 
-    socket.broadcast.emit('acabar partida', {
-      username: socket.username,
-      matchname: matchname
-    });
-  });
+  //   socket.broadcast.emit('acabar partida', {
+  //     username: socket.username,
+  //     matchname: matchname
+  //   });
+  // });
 
   // when the user disconnects.. perform this
   socket.on('disconnect', function () {
@@ -166,5 +143,21 @@ io.on('connection', function (socket) {
       });
     }
   });
-});
 
+  // Routing
+
+  // backURL=req.header('Referer') || '/';
+  // do your thang
+  // res.redirect(backURL);
+
+  app.get('/', function (req, res) {
+    res.sendfile( __dirname + '/public/' );
+  });
+
+  app.get('/:match', function(req, res) {
+    var match = req.params.match;
+    socket.emit('join match', { username: socket.username, matchname: match });
+    res.sendfile( __dirname + '/public/', { hidden} );
+  });
+
+});
